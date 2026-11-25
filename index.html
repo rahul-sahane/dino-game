@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Dino Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Archivo:wght@500;600;800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f4f2ec;
+        --panel: #fffdf8;
+        --ink: #211d16;
+        --ink-soft: #5c5546;
+        --line: #d9d2c0;
+        --accent: #c2491d;
+        --accent-ink: #ffffff;
+        --btn-bg: #ece7d8;
+        --btn-bg-hover: #e2dac4;
+        --frame: #211d16;
+        --shadow: 0 18px 40px rgba(33, 29, 22, 0.14);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #131417;
+          --panel: #1b1d21;
+          --ink: #f0ead9;
+          --ink-soft: #a79f8a;
+          --line: #35322a;
+          --accent: #e0682f;
+          --accent-ink: #ffffff;
+          --btn-bg: #26241e;
+          --btn-bg-hover: #322f27;
+          --frame: #0c0d0f;
+          --shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 16px 40px;
+      }
+      .wrap { width: 100%; max-width: 920px; }
+
+      /* ---------- HUD ---------- */
+      .hud {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      .hud .title-block h1 {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+        margin: 0;
+        line-height: 1.1;
+      }
+      .hud .title-block p {
+        margin: 4px 0 0;
+        font-size: 13.5px;
+        color: var(--ink-soft);
+      }
+      .scores {
+        display: flex;
+        gap: 10px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      .score-box {
+        background: var(--panel);
+        border: 1.5px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 14px 8px;
+        min-width: 108px;
+        text-align: right;
+      }
+      .score-box .label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+      }
+      .score-box .value {
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.15;
+        font-variant-numeric: tabular-nums;
+      }
+      .score-box.flash .value { color: var(--accent); }
+
+      /* ---------- Stage ---------- */
+      .stage {
+        position: relative;
+        background: var(--panel);
+        border: 2.5px solid var(--frame);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        aspect-ratio: 900 / 240;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: pointer;
+      }
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-align: center;
+        padding: 16px;
+        background: rgba(20, 16, 8, 0.22);
+        transition: background 0.18s ease;
+      }
+      .overlay.dim { background: rgba(20, 16, 8, 0.45); }
+      .overlay[hidden] { display: none; }
+      .overlay .big {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-weight: 700;
+        font-size: clamp(20px, 4.6vw, 34px);
+        letter-spacing: 0.12em;
+        color: #fff8ea;
+        text-shadow: 0 2px 0 rgba(0,0,0,0.45);
+        margin: 0;
+      }
+      .overlay .sub {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff3da;
+        text-shadow: 0 1px 0 rgba(0,0,0,0.5);
+        margin: 0;
+      }
+      .btn {
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 15px;
+        border: 2px solid var(--frame);
+        border-radius: 10px;
+        background: var(--btn-bg);
+        color: var(--ink);
+        min-height: 48px;
+        padding: 10px 20px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .btn:hover { background: var(--btn-bg-hover); }
+      .btn:active { transform: translateY(1px); }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+        font-size: 16px;
+        padding: 12px 28px;
+      }
+      .btn.primary:hover { filter: brightness(1.07); }
+      .btn[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--bg);
+        border-color: var(--ink);
+      }
+      .btn svg { width: 18px; height: 18px; flex: none; }
+
+      /* ---------- Controls ---------- */
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+      }
+      .controls .spacer { flex: 1; }
+      .jump-btn { flex: 1 1 150px; min-height: 60px; font-size: 17px; }
+      .duck-btn { flex: 1 1 110px; min-height: 60px; font-size: 17px; }
+      .util-btn { min-height: 60px; }
+      @media (max-width: 560px) {
+        .overlay { gap: 6px; padding: 8px; }
+        .overlay .big { font-size: 19px; letter-spacing: 0.08em; }
+        .overlay .sub { display: none; }
+        .overlay .btn.primary { min-height: 44px; padding: 8px 22px; font-size: 15px; }
+        .util-btn { flex: 1 1 30%; min-height: 52px; font-size: 13.5px; padding: 8px 6px; }
+        .controls .spacer { display: none; }
+        .score-box { min-width: 92px; padding: 6px 10px 7px; }
+        .score-box .value { font-size: 20px; }
+      }
+
+      .hints {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .hints b { color: var(--ink); font-weight: 700; }
+      kbd {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 11.5px;
+        background: var(--panel);
+        border: 1.5px solid var(--line);
+        border-bottom-width: 3px;
+        border-radius: 6px;
+        padding: 1px 6px;
+        color: var(--ink);
+      }
+      .status-line {
+        margin-top: 10px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        min-height: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="hud">
+        <div class="title-block">
+          <h1>Dino Run</h1>
+          <p>Jump the cacti, duck the pterodactyls. It speeds up — hold on.</p>
+        </div>
+        <div class="scores" aria-live="off">
+          <div class="score-box" id="scoreBox">
+            <div class="label">Score</div>
+            <div class="value" id="scoreVal">00000</div>
+          </div>
+          <div class="score-box">
+            <div class="label">Best</div>
+            <div class="value" id="bestVal">00000</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <canvas id="game" width="900" height="240" aria-label="Dino runner game. Press space or tap to jump."></canvas>
+        <div class="overlay" id="overlay">
+          <p class="big" id="overlayTitle">READY?</p>
+          <p class="sub" id="overlaySub">Press Space, tap the game, or hit Start.</p>
+          <button class="btn primary" id="overlayBtn" type="button">Start</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn jump-btn" id="jumpBtn" type="button" aria-label="Jump">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+          Jump
+        </button>
+        <button class="btn duck-btn" id="duckBtn" type="button" aria-label="Duck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+          Duck
+        </button>
+        <div class="spacer"></div>
+        <button class="btn util-btn" id="autoBtn" type="button" aria-pressed="false" title="The dino plays itself">Auto-pilot</button>
+        <button class="btn util-btn" id="pauseBtn" type="button">Pause</button>
+        <button class="btn util-btn" id="soundBtn" type="button" aria-pressed="true">Sound on</button>
+      </div>
+
+      <div class="hints">
+        <span><b>Jump</b> — <kbd>Space</kbd> <kbd>↑</kbd> <kbd>W</kbd> or tap</span>
+        <span><b>Duck / fast-fall</b> — <kbd>↓</kbd> <kbd>S</kbd></span>
+        <span><b>Pause</b> — <kbd>P</kbd></span>
+        <span><b>Restart</b> — <kbd>R</kbd></span>
+      </div>
+      <p class="status-line" id="statusLine">Tip: hold ↓ in mid-air to drop fast and set up the next jump.</p>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ================= Setup ================= */
+        var W = 900, H = 240;
+        var GROUND_Y = H - 38;          // top surface of the ground
+        var canvas = document.getElementById("game");
+        var ctx = canvas.getContext("2d");
+
+        var scoreVal = document.getElementById("scoreVal");
+        var bestVal = document.getElementById("bestVal");
+        var scoreBox = document.getElementById("scoreBox");
+        var overlay = document.getElementById("overlay");
+        var overlayTitle = document.getElementById("overlayTitle");
+        var overlaySub = document.getElementById("overlaySub");
+        var overlayBtn = document.getElementById("overlayBtn");
+        var statusLine = document.getElementById("statusLine");
+        var autoBtn = document.getElementById("autoBtn");
+        var pauseBtn = document.getElementById("pauseBtn");
+        var soundBtn = document.getElementById("soundBtn");
+        var jumpBtn = document.getElementById("jumpBtn");
+        var duckBtn = document.getElementById("duckBtn");
+
+        var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        function fitCanvas() {
+          var rect = canvas.getBoundingClientRect();
+          var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+          canvas.width = Math.round(rect.width * dpr);
+          canvas.height = Math.round(rect.width * (H / W) * dpr);
+          ctx.setTransform(canvas.width / W, 0, 0, canvas.width / W, 0, 0);
+        }
+        window.addEventListener("resize", fitCanvas);
+
+        /* ================= Sprites (pixel maps) ================= */
+        var PX = 2; // logical px per sprite pixel
+
+        var DINO_BODY = [
+          "........................",
+          ".................#####..",
+          "................#######.",
+          "................##.#####",
+          "................#######.",
+          ".................######.",
+          ".................#####..",
+          ".................##.....",
+          "................##......",
+          "...............##.......",
+          ".............#####......",
+          ".#.........########.....",
+          ".##.......##########....",
+          "..###....###########....",
+          "...#################....",
+          "....###############.....",
+          ".....#############......",
+          "......###########.......",
+          ".......#########........"
+        ];
+        var DINO_LEGS_A = [
+          ".......###...###........",
+          ".......###....##........",
+          ".......####...###......."
+        ];
+        var DINO_LEGS_B = [
+          ".......####..##.........",
+          ".......###...###........",
+          "......####.............."
+        ];
+        var DINO_LEGS_JUMP = [
+          ".......###...###........",
+          ".......###....###.......",
+          "......###.....###......."
+        ];
+        var DUCK_BODY = [
+          ".........................#####",
+          ".......................##.####",
+          "........................######",
+          "........................#####.",
+          ".......................###....",
+          ".#........#################...",
+          ".##......##################...",
+          "..#######################.....",
+          "...#####################......",
+          "....##################........"
+        ];
+        var DUCK_LEGS_A = [
+          "....###....###................",
+          "....###.....##................"
+        ];
+        var DUCK_LEGS_B = [
+          "....####...##.................",
+          "...####.....###..............."
+        ];
+        var BIRD_A = [
+          "......##..................",
+          "......###.................",
+          ".......###................",
+          ".......#####..............",
+          "..##################.####.",
+          "..#####################...",
+          "...##################.....",
+          ".....############........."
+        ];
+        var BIRD_B = [
+          "..##################.####.",
+          "..#####################...",
+          "...##################.....",
+          ".....############.........",
+          ".......#####..............",
+          ".......###................",
+          "......###.................",
+          "......##.................."
+        ];
+        var CACTUS_SMALL = [
+          "....##....",
+          "....##....",
+          "#...##....",
+          "#...##..#.",
+          "#...##..#.",
+          "#...##..#.",
+          "##..##..#.",
+          ".#..#####.",
+          ".########.",
+          "..######..",
+          "....##....",
+          "....##...."
+        ];
+        var CACTUS_BIG = [
+          ".....##.....",
+          ".....##.....",
+          ".....##.....",
+          "..#..##.....",
+          "..#..##..#..",
+          "..#..##..#..",
+          "..#..##..#..",
+          "..#..##..#..",
+          "..##.##..#..",
+          "...#####.#..",
+          "....########",
+          ".....######.",
+          ".....##.....",
+          ".....##.....",
+          ".....##.....",
+          ".....##....."
+        ];
+
+        function drawMap(map, x, y, color) {
+          ctx.fillStyle = color;
+          for (var r = 0; r < map.length; r++) {
+            var row = map[r];
+            for (var c = 0; c < row.length; c++) {
+              if (row.charAt(c) === "#") {
+                ctx.fillRect(x + c * PX, y + r * PX, PX, PX);
+              }
+            }
+          }
+        }
+        function mapW(map) { return map[0].length * PX; }
+        function mapH(map) { return map.length * PX; }
+
+        /* ================= Audio (synthesised) ================= */
+        var audioCtx = null, soundOn = true;
+        function ensureAudio() {
+          if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+          }
+          if (audioCtx && audioCtx.state === "suspended") { audioCtx.resume(); }
+        }
+        function tone(freqA, freqB, dur, type, vol, delay) {
+          if (!soundOn || !audioCtx) return;
+          var t0 = audioCtx.currentTime + (delay || 0);
+          var o = audioCtx.createOscillator();
+          var g = audioCtx.createGain();
+          o.type = type;
+          o.frequency.setValueAtTime(freqA, t0);
+          o.frequency.exponentialRampToValueAtTime(Math.max(freqB, 1), t0 + dur);
+          g.gain.setValueAtTime(vol, t0);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+          o.connect(g); g.connect(audioCtx.destination);
+          o.start(t0); o.stop(t0 + dur + 0.02);
+        }
+        function sfxJump()  { tone(280, 640, 0.11, "square", 0.06); }
+        function sfxPoint() { tone(880, 880, 0.07, "sine", 0.09); tone(1318, 1318, 0.12, "sine", 0.09, 0.07); }
+        function sfxCrash() { tone(200, 38, 0.3, "sawtooth", 0.14); tone(90, 30, 0.34, "square", 0.08, 0.02); }
+
+        /* ================= Game state ================= */
+        var STATE = { READY: 0, RUN: 1, PAUSE: 2, OVER: 3 };
+        var state = STATE.READY;
+
+        var DINO_X = 56;
+        var dino = {
+          y: 0,            // height above ground (px)
+          vy: 0,
+          ducking: false,
+          legTimer: 0,
+          legFrame: 0,
+          blinkTimer: 2.5
+        };
+        var GRAV = 3050, JUMP_V = 895;
+
+        var obstacles = [];   // {kind:'cactus'|'bird', map(s), x, w, h, yTop, flap}
+        var clouds = [];
+        var particles = [];
+        var groundMarks = [];
+        var score = 0, best = 0, lastMilestone = 0;
+        var speed = 390;
+        var distSinceSpawn = 0, nextGap = 520;
+        var elapsed = 0;
+        var autopilot = false;
+        var duckHeld = false;
+        var deadTimer = 0;
+
+        for (var i = 0; i < 46; i++) {
+          groundMarks.push({ x: Math.random() * W, w: 3 + Math.random() * 14, o: Math.random() });
+        }
+        var stars = [];
+        for (var s = 0; s < 60; s++) {
+          stars.push({ x: Math.random() * W, y: Math.random() * (GROUND_Y - 70), r: Math.random() * 1.4 + 0.4, tw: Math.random() * Math.PI * 2 });
+        }
+        function addCloud(x) {
+          clouds.push({ x: x, y: 14 + Math.random() * 66, s: 0.6 + Math.random() * 0.9, v: 12 + Math.random() * 16 });
+        }
+        for (var c = 0; c < 5; c++) addCloud(Math.random() * W);
+
+        function dinoHeight() {
+          return dino.ducking && dino.y === 0 ? mapH(DUCK_BODY) + mapH(DUCK_LEGS_A) : mapH(DINO_BODY) + mapH(DINO_LEGS_A);
+        }
+        function dinoWidth() {
+          return dino.ducking && dino.y === 0 ? mapW(DUCK_BODY) : mapW(DINO_BODY);
+        }
+
+        function reset() {
+          obstacles = [];
+          particles = [];
+          score = 0; lastMilestone = 0;
+          speed = 390;
+          dino.y = 0; dino.vy = 0; dino.ducking = false;
+          distSinceSpawn = 0; nextGap = 560;
+          elapsed = 0; deadTimer = 0;
+          updateScoreUI();
+        }
+
+        function startGame() {
+          ensureAudio();
+          reset();
+          state = STATE.RUN;
+          overlay.hidden = true;
+          pauseBtn.textContent = "Pause";
+          setStatus("Go! Space / tap to jump, ↓ to duck.");
+        }
+        function gameOver() {
+          state = STATE.OVER;
+          deadTimer = 0;
+          sfxCrash();
+          if (Math.floor(score) > best) { best = Math.floor(score); bestVal.textContent = pad(best); }
+          overlayTitle.textContent = "GAME OVER";
+          overlaySub.textContent = "Score " + pad(Math.floor(score)) + "  ·  Best " + pad(best);
+          overlayBtn.textContent = "Play again";
+          overlay.classList.add("dim");
+          overlay.hidden = false;
+          pauseBtn.textContent = "Pause";
+          setStatus("Crashed! Press R or hit Play again.");
+        }
+        function pauseGame() {
+          if (state !== STATE.RUN) return;
+          state = STATE.PAUSE;
+          overlayTitle.textContent = "PAUSED";
+          overlaySub.textContent = "Press P or hit Resume to keep running.";
+          overlayBtn.textContent = "Resume";
+          overlay.classList.add("dim");
+          overlay.hidden = false;
+          pauseBtn.textContent = "Resume";
+        }
+        function resumeGame() {
+          if (state !== STATE.PAUSE) return;
+          ensureAudio();
+          state = STATE.RUN;
+          overlay.hidden = true;
+          pauseBtn.textContent = "Pause";
+        }
+
+        function pad(n) {
+          var t = String(Math.max(0, n | 0));
+          while (t.length < 5) t = "0" + t;
+          return t;
+        }
+        function updateScoreUI() {
+          scoreVal.textContent = pad(Math.floor(score));
+        }
+        function setStatus(msg) { statusLine.textContent = msg; }
+
+        /* ================= Spawning ================= */
+        function spawnObstacle() {
+          var roll = Math.random();
+          var sc = Math.floor(score);
+          if (sc > 420 && roll < 0.30) {
+            // pterodactyl at one of three heights
+            var heights = [GROUND_Y - 34, GROUND_Y - 56, GROUND_Y - 84];
+            var hi = Math.floor(Math.random() * (sc > 900 ? 3 : 2));
+            obstacles.push({
+              kind: "bird", x: W + 70, yTop: heights[hi],
+              w: mapW(BIRD_A), h: mapH(BIRD_A), flap: Math.random() * 0.4, level: hi
+            });
+          } else if (roll < 0.52) {
+            obstacles.push({ kind: "cactus", map: CACTUS_SMALL, x: W + 40, w: mapW(CACTUS_SMALL), h: mapH(CACTUS_SMALL), cluster: 1 });
+          } else if (roll < 0.78) {
+            obstacles.push({ kind: "cactus", map: CACTUS_BIG, x: W + 40, w: mapW(CACTUS_BIG), h: mapH(CACTUS_BIG), cluster: 1 });
+          } else {
+            var n = 2 + Math.floor(Math.random() * 2);
+            var useBig = Math.random() < 0.5;
+            var m = useBig ? CACTUS_BIG : CACTUS_SMALL;
+            obstacles.push({ kind: "cactus", map: m, x: W + 40, w: mapW(m) * n - 4, h: mapH(m), cluster: n });
+          }
+          var base = 330 + speed * 0.52;
+          nextGap = base + Math.random() * 430;
+        }
+
+        /* ================= Actions ================= */
+        function doJump() {
+          if (state === STATE.READY || state === STATE.OVER) {
+            if (state === STATE.OVER && deadTimer < 0.35) return; // avoid accidental instant restart
+            startGame();
+            return;
+          }
+          if (state === STATE.PAUSE) { resumeGame(); return; }
+          if (dino.y === 0) {
+            dino.vy = JUMP_V;
+            dino.y = 0.01;
+            dino.ducking = false;
+            sfxJump();
+          }
+        }
+        function setDuck(on) {
+          duckHeld = on;
+          if (state === STATE.RUN) dino.ducking = on && dino.y === 0;
+        }
+
+        /* ================= Auto-pilot ================= */
+        function runAutopilot(dt) {
+          var nearest = null;
+          for (var i = 0; i < obstacles.length; i++) {
+            var o = obstacles[i];
+            if (o.x + o.w > DINO_X && (!nearest || o.x < nearest.x)) nearest = o;
+          }
+          if (!nearest) { setDuck(false); return; }
+          var dist = nearest.x - (DINO_X + dinoWidth());
+          var trigger = speed * 0.335 + 8;
+          if (nearest.kind === "bird" && nearest.level === 2) {
+            setDuck(false); // high bird: run under it
+            return;
+          }
+          if (nearest.kind === "bird" && nearest.level === 1) {
+            // mid bird: duck under it
+            if (dino.y === 0) setDuck(dist < 190);
+            else if (dist < 60) setDuck(true);
+            return;
+          }
+          // cactus or low bird: jump
+          setDuck(false);
+          if (dist < trigger && dist > -10 && dino.y === 0) {
+            dino.vy = JUMP_V; dino.y = 0.01; sfxJump();
+          }
+        }
+
+        /* ================= Update ================= */
+        function update(dt) {
+          elapsed += dt;
+
+          // clouds always drift
+          for (var i = clouds.length - 1; i >= 0; i--) {
+            clouds[i].x -= clouds[i].v * dt * (state === STATE.RUN ? 1 : 0.25);
+            if (clouds[i].x < -90) { clouds.splice(i, 1); addCloud(W + 30); }
+          }
+          if (state !== STATE.RUN) {
+            if (state === STATE.OVER) deadTimer += dt;
+            dino.blinkTimer -= dt; if (dino.blinkTimer < -0.12) dino.blinkTimer = 2 + Math.random() * 2.5;
+            return;
+          }
+
+          if (autopilot) runAutopilot(dt);
+
+          // score + speed
+          score += speed * dt * 0.026;
+          var milestone = Math.floor(score / 100);
+          if (milestone > lastMilestone) {
+            lastMilestone = milestone;
+            speed = Math.min(980, speed + 26);
+            sfxPoint();
+            if (!reduceMotion) {
+              scoreBox.classList.add("flash");
+              setTimeout(function () { scoreBox.classList.remove("flash"); }, 220);
+            }
+          }
+          updateScoreUI();
+
+          // dino physics
+          if (dino.y > 0 || dino.vy > 0) {
+            var g = GRAV * ((duckHeld && dino.vy < 60) ? 2.7 : 1);
+            dino.vy -= g * dt;
+            dino.y += dino.vy * dt;
+            if (dino.y <= 0) {
+              dino.y = 0; dino.vy = 0;
+              dino.ducking = duckHeld;
+              // landing dust
+              if (!reduceMotion) {
+                for (var p = 0; p < 5; p++) {
+                  particles.push({ x: DINO_X + 8 + Math.random() * 26, y: GROUND_Y - 2, vx: -40 - Math.random() * 60, vy: -14 - Math.random() * 26, life: 0.32, t: 0 });
+                }
+              }
+            }
+          } else {
+            dino.ducking = duckHeld;
+            dino.legTimer += dt;
+            if (dino.legTimer > 0.085) { dino.legTimer = 0; dino.legFrame = 1 - dino.legFrame; }
+            // running dust
+            if (!reduceMotion && Math.random() < dt * 9) {
+              particles.push({ x: DINO_X + 4, y: GROUND_Y - 2, vx: -speed * 0.24, vy: -8 - Math.random() * 18, life: 0.3, t: 0 });
+            }
+          }
+          dino.blinkTimer -= dt; if (dino.blinkTimer < -0.12) dino.blinkTimer = 2 + Math.random() * 2.5;
+
+          // ground marks scroll
+          for (var m = 0; m < groundMarks.length; m++) {
+            groundMarks[m].x -= speed * dt;
+            if (groundMarks[m].x + groundMarks[m].w < 0) { groundMarks[m].x = W + Math.random() * 30; groundMarks[m].w = 3 + Math.random() * 14; }
+          }
+
+          // spawn
+          distSinceSpawn += speed * dt;
+          if (distSinceSpawn > nextGap) { distSinceSpawn = 0; spawnObstacle(); }
+
+          // obstacles move + collide
+          var dBox = dinoBox();
+          for (var j = obstacles.length - 1; j >= 0; j--) {
+            var o = obstacles[j];
+            o.x -= speed * dt * (o.kind === "bird" ? 1.12 : 1);
+            if (o.kind === "bird") o.flap += dt;
+            if (o.x + o.w < -80) { obstacles.splice(j, 1); continue; }
+            var oBox = obstacleBox(o);
+            if (boxesHit(dBox, oBox)) { gameOver(); return; }
+          }
+
+          // particles
+          for (var q = particles.length - 1; q >= 0; q--) {
+            var pt = particles[q];
+            pt.t += dt;
+            pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 130 * dt;
+            if (pt.t > pt.life) particles.splice(q, 1);
+          }
+        }
+
+        function dinoBox() {
+          var w = dinoWidth(), h = dinoHeight();
+          var top = GROUND_Y - dino.y - h;
+          return { x: DINO_X + 5, y: top + 3, w: w - 10, h: h - 4 };
+        }
+        function obstacleBox(o) {
+          if (o.kind === "bird") {
+            return { x: o.x + 5, y: o.yTop + 3, w: o.w - 10, h: o.h - 6 };
+          }
+          return { x: o.x + 3, y: GROUND_Y - o.h + 3, w: o.w - 6, h: o.h - 3 };
+        }
+        function boxesHit(a, b) {
+          return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+        }
+
+        /* ================= Palette / day-night ================= */
+        function lerp(a, b, t) { return a + (b - a) * t; }
+        function mix(c1, c2, t) {
+          return [Math.round(lerp(c1[0], c2[0], t)), Math.round(lerp(c1[1], c2[1], t)), Math.round(lerp(c1[2], c2[2], t))];
+        }
+        function rgb(c) { return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
+        // stops: 0 day, .42 day, .55 dusk, .68 night, .92 night, 1 day
+        var STOPS = [
+          { t: 0.00, sky: [252, 243, 220], skyB: [250, 226, 178], ink: [62, 52, 38], ground: [233, 213, 168], cloud: [255, 252, 244], star: 0 },
+          { t: 0.42, sky: [252, 243, 220], skyB: [250, 226, 178], ink: [62, 52, 38], ground: [233, 213, 168], cloud: [255, 252, 244], star: 0 },
+          { t: 0.55, sky: [250, 176, 118], skyB: [244, 128, 92], ink: [74, 44, 34], ground: [216, 164, 116], cloud: [255, 205, 164], star: 0.15 },
+          { t: 0.68, sky: [38, 44, 74], skyB: [24, 27, 48], ink: [226, 220, 199], ground: [52, 55, 74], cloud: [86, 92, 118], star: 1 },
+          { t: 0.92, sky: [38, 44, 74], skyB: [24, 27, 48], ink: [226, 220, 199], ground: [52, 55, 74], cloud: [86, 92, 118], star: 1 },
+          { t: 1.00, sky: [252, 243, 220], skyB: [250, 226, 178], ink: [62, 52, 38], ground: [233, 213, 168], cloud: [255, 252, 244], star: 0 }
+        ];
+        function palette() {
+          var ph = (score % 700) / 700;
+          var a = STOPS[0], b = STOPS[STOPS.length - 1];
+          for (var i = 0; i < STOPS.length - 1; i++) {
+            if (ph >= STOPS[i].t && ph <= STOPS[i + 1].t) { a = STOPS[i]; b = STOPS[i + 1]; break; }
+          }
+          var t = b.t === a.t ? 0 : (ph - a.t) / (b.t - a.t);
+          return {
+            sky: mix(a.sky, b.sky, t), skyB: mix(a.skyB, b.skyB, t),
+            ink: mix(a.ink, b.ink, t), ground: mix(a.ground, b.ground, t),
+            cloud: mix(a.cloud, b.cloud, t), star: lerp(a.star, b.star, t), phase: ph
+          };
+        }
+
+        /* ================= Render ================= */
+        function drawCloud(x, y, s, color) {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(x, y, 11 * s, 0, Math.PI * 2);
+          ctx.arc(x + 14 * s, y + 2 * s, 8 * s, 0, Math.PI * 2);
+          ctx.arc(x - 14 * s, y + 3 * s, 7 * s, 0, Math.PI * 2);
+          ctx.arc(x + 3 * s, y + 5 * s, 9 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        function render() {
+          var pal = palette();
+          // sky
+          var grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+          grad.addColorStop(0, rgb(pal.sky));
+          grad.addColorStop(1, rgb(pal.skyB));
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, W, GROUND_Y + 2);
+
+          // stars
+          if (pal.star > 0.02) {
+            for (var i = 0; i < stars.length; i++) {
+              var st = stars[i];
+              var tw = 0.55 + 0.45 * Math.sin(elapsed * 2 + st.tw);
+              ctx.globalAlpha = pal.star * tw;
+              ctx.fillStyle = "#f5efdb";
+              ctx.fillRect(st.x, st.y, st.r, st.r);
+            }
+            ctx.globalAlpha = 1;
+          }
+
+          // sun / moon travelling across the sky with the cycle
+          var celX = 60 + pal.phase * (W - 120);
+          var celY = 34 + Math.sin(pal.phase * Math.PI) * -10 + 8;
+          if (pal.star < 0.5) {
+            ctx.fillStyle = "#f7b733";
+            ctx.beginPath(); ctx.arc(celX, celY, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "rgba(247,183,51,0.25)";
+            ctx.beginPath(); ctx.arc(celX, celY, 22, 0, Math.PI * 2); ctx.fill();
+          } else {
+            ctx.fillStyle = "#e9e4cf";
+            ctx.beginPath(); ctx.arc(celX, celY, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = rgb(pal.sky);
+            ctx.beginPath(); ctx.arc(celX + 5, celY - 3, 10, 0, Math.PI * 2); ctx.fill();
+          }
+
+          // clouds
+          for (var ci = 0; ci < clouds.length; ci++) {
+            drawCloud(clouds[ci].x, clouds[ci].y, clouds[ci].s, rgb(pal.cloud));
+          }
+
+          // ground
+          ctx.fillStyle = rgb(pal.ground);
+          ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+          ctx.fillStyle = rgb(pal.ink);
+          ctx.fillRect(0, GROUND_Y, W, 2.5);
+          ctx.globalAlpha = 0.35;
+          for (var m = 0; m < groundMarks.length; m++) {
+            var gm = groundMarks[m];
+            ctx.fillRect(gm.x, GROUND_Y + 9 + gm.o * 18, gm.w, 2);
+          }
+          ctx.globalAlpha = 1;
+
+          // obstacles
+          var ink = rgb(pal.ink);
+          for (var j = 0; j < obstacles.length; j++) {
+            var o = obstacles[j];
+            if (o.kind === "bird") {
+              var frame = (Math.floor(o.flap * 7) % 2 === 0) ? BIRD_A : BIRD_B;
+              drawMap(frame, Math.round(o.x), Math.round(o.yTop), ink);
+            } else {
+              var wOne = mapW(o.map);
+              for (var k = 0; k < o.cluster; k++) {
+                drawMap(o.map, Math.round(o.x + k * (wOne - 2)), GROUND_Y - o.h, ink);
+              }
+            }
+          }
+
+          // dust particles
+          ctx.fillStyle = ink;
+          for (var q = 0; q < particles.length; q++) {
+            var pt = particles[q];
+            ctx.globalAlpha = Math.max(0, 0.5 * (1 - pt.t / pt.life));
+            ctx.fillRect(pt.x, pt.y, 3, 3);
+          }
+          ctx.globalAlpha = 1;
+
+          // dino
+          var dh = dinoHeight();
+          var top = GROUND_Y - dino.y - dh;
+          if (dino.ducking && dino.y === 0) {
+            drawMap(DUCK_BODY, DINO_X, Math.round(top), ink);
+            var dl = dino.legFrame === 0 ? DUCK_LEGS_A : DUCK_LEGS_B;
+            drawMap(dl, DINO_X, Math.round(top) + mapH(DUCK_BODY), ink);
+          } else {
+            drawMap(DINO_BODY, DINO_X, Math.round(top), ink);
+            var legs = dino.y > 0 ? DINO_LEGS_JUMP : (dino.legFrame === 0 ? DINO_LEGS_A : DINO_LEGS_B);
+            if (state === STATE.READY || state === STATE.PAUSE) legs = DINO_LEGS_A;
+            drawMap(legs, DINO_X, Math.round(top) + mapH(DINO_BODY), ink);
+            // eye: blink (cover the eye hole) or X when dead
+            var eyeX = DINO_X + 19 * PX, eyeY = Math.round(top) + 3 * PX;
+            if (state === STATE.OVER) {
+              ctx.strokeStyle = rgb(pal.sky);
+              ctx.lineWidth = 1.6;
+              ctx.beginPath();
+              ctx.moveTo(eyeX - 1, eyeY - 1); ctx.lineTo(eyeX + 3, eyeY + 3);
+              ctx.moveTo(eyeX + 3, eyeY - 1); ctx.lineTo(eyeX - 1, eyeY + 3);
+              ctx.stroke();
+            } else if (dino.blinkTimer < 0) {
+              ctx.fillStyle = ink;
+              ctx.fillRect(eyeX, eyeY, PX, PX);
+            }
+          }
+
+          // idle hint arrow on the ready screen
+          if (state === STATE.READY && !reduceMotion) {
+            var bob = Math.sin(elapsed * 4) * 4;
+            ctx.fillStyle = ink;
+            ctx.globalAlpha = 0.75;
+            var ax = DINO_X + 14, ay = GROUND_Y - dh - 34 + bob;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay + 12); ctx.lineTo(ax - 7, ay); ctx.lineTo(ax + 7, ay);
+            ctx.closePath(); ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+
+        /* ================= Main loop ================= */
+        var lastTs = 0;
+        function loop(ts) {
+          var dt = Math.min(0.033, lastTs ? (ts - lastTs) / 1000 : 0.016);
+          lastTs = ts;
+          update(dt);
+          render();
+          requestAnimationFrame(loop);
+        }
+
+        /* ================= Input ================= */
+        function pressJump(e) {
+          if (e) e.preventDefault();
+          ensureAudio();
+          doJump();
+        }
+        window.addEventListener("keydown", function (e) {
+          var code = e.code;
+          if (code === "Space" || code === "ArrowUp" || code === "KeyW") {
+            e.preventDefault();
+            if (!e.repeat) pressJump();
+          } else if (code === "ArrowDown" || code === "KeyS") {
+            e.preventDefault();
+            if (!e.repeat) setDuck(true);
+          } else if (code === "KeyP" || code === "Escape") {
+            e.preventDefault();
+            if (state === STATE.RUN) pauseGame(); else if (state === STATE.PAUSE) resumeGame();
+          } else if (code === "KeyR") {
+            if (state === STATE.OVER || state === STATE.PAUSE || state === STATE.RUN) startGame();
+          } else if (code === "Enter") {
+            if (state === STATE.READY || state === STATE.OVER) pressJump();
+          }
+        });
+        window.addEventListener("keyup", function (e) {
+          if (e.code === "ArrowDown" || e.code === "KeyS") setDuck(false);
+        });
+
+        canvas.addEventListener("pointerdown", function (e) { pressJump(e); });
+        jumpBtn.addEventListener("pointerdown", function (e) { pressJump(e); });
+        jumpBtn.addEventListener("click", function (e) { e.preventDefault(); });
+
+        duckBtn.addEventListener("pointerdown", function (e) { e.preventDefault(); ensureAudio(); setDuck(true); });
+        duckBtn.addEventListener("pointerup", function () { setDuck(false); });
+        duckBtn.addEventListener("pointerleave", function () { setDuck(false); });
+        duckBtn.addEventListener("pointercancel", function () { setDuck(false); });
+        duckBtn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+        overlayBtn.addEventListener("click", function () {
+          ensureAudio();
+          if (state === STATE.PAUSE) resumeGame();
+          else startGame();
+          overlayBtn.blur();
+        });
+        pauseBtn.addEventListener("click", function () {
+          if (state === STATE.RUN) pauseGame();
+          else if (state === STATE.PAUSE) resumeGame();
+          pauseBtn.blur();
+        });
+        soundBtn.addEventListener("click", function () {
+          soundOn = !soundOn;
+          soundBtn.textContent = soundOn ? "Sound on" : "Sound off";
+          soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+          if (soundOn) { ensureAudio(); sfxPoint(); }
+          soundBtn.blur();
+        });
+        autoBtn.addEventListener("click", function () {
+          autopilot = !autopilot;
+          autoBtn.setAttribute("aria-pressed", autopilot ? "true" : "false");
+          setStatus(autopilot ? "Auto-pilot on — the dino plays itself. Turn it off to take over." : "Auto-pilot off — you're in control.");
+          if (autopilot && state === STATE.READY) startGame();
+          autoBtn.blur();
+        });
+
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden && state === STATE.RUN) pauseGame();
+        });
+
+        /* ================= Go ================= */
+        overlay.classList.remove("dim");
+        fitCanvas();
+        updateScoreUI();
+        bestVal.textContent = pad(0);
+        requestAnimationFrame(loop);
+      })();
+    </script>
+  </body>
+</html>
